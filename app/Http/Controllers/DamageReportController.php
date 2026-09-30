@@ -1,0 +1,216 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\DamageReport;
+use App\Models\Facility;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+class DamageReportController extends Controller
+{
+    /**
+     * User's damage reports list (US 7).
+     * Strictly scopes to the authenticated user.
+     */
+    public function myReports(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $reports = DamageReport::with('facility')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $data = $reports->map(function ($rep) {
+            $statusClass = match ($rep->status) {
+                'baru' => 'new',
+                'diproses' => 'processing',
+                'selesai' => 'completed',
+                'ditolak' => 'rejected',
+                default => $rep->status,
+            };
+
+            $statusLabel = match ($rep->status) {
+                'baru' => 'Baru',
+                'diproses' => 'Diproses',
+                'selesai' => 'Selesai',
+                'ditolak' => 'Ditolak',
+                default => ucfirst($rep->status),
+            };
+
+            return [
+                'id' => $rep->id,
+                'facility' => $rep->facility ? $rep->facility->name : 'Fasilitas Tidak Diketahui',
+                'category' => $rep->category,
+                'location' => $rep->location_detail,
+                'date' => $rep->created_at ? $rep->created_at->translatedFormat('d M Y') : '-',
+                'status' => $statusLabel,
+                'statusClass' => $statusClass,
+                'description' => $rep->description,
+                'photo' => $rep->photo ? basename($rep->photo) : 'Tidak ada foto',
+                'photo_url' => $rep->photo ? Storage::url($rep->photo) : null,
+                'note' => $rep->resolution_note ?: ($rep->status === 'baru' ? 'Laporan telah diterima dan menunggu pemeriksaan petugas.' : ($rep->status === 'diproses' ? 'Petugas sedang melakukan pengecekan perangkat.' : ($rep->reject_reason ?: '-'))),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Create a new damage report (US 6).
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'facility' => 'required',
+            'category' => 'required|string',
+            'location_detail' => 'required|string|max:255',
+            'description' => 'required|string|min:10|max:2000',
+            'photo' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'facility.required' => 'Fasilitas wajib dipilih.',
+            'category.required' => 'Kategori masalah wajib dipilih.',
+            'location_detail.required' => 'Lokasi detail wajib diisi.',
+            'description.required' => 'Deskripsi masalah wajib diisi.',
+            'description.min' => 'Deskripsi masalah harus dijelaskan dengan lebih detail (minimal 10 karakter).',
+            'photo.mimes' => 'Format foto harus JPG, PNG, atau WEBP.',
+            'photo.max' => 'Ukuran foto maksimal 5 MB.',
+        ]);
+
+        $facilityInput = $request->facility;
+        $facility = Facility::where('id', $facilityInput)
+            ->orWhere('slug', $facilityInput)
+            ->orWhere('name', $facilityInput)
+            ->first();
+
+        if (!$facility) {
+            return response()->json([
+                'message' => 'Fasilitas yang dipilih tidak ditemukan.',
+            ], 404);
+        }
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('reports', 'public');
+        }
+
+        $categoryNames = [
+            'fasilitas-rusak' => 'Fasilitas rusak',
+            'peralatan-rusak' => 'Peralatan rusak',
+            'kebersihan' => 'Kebersihan',
+            'kelistrikan' => 'Kelistrikan',
+            'jaringan' => 'Jaringan/Internet',
+            'keamanan' => 'Keamanan',
+            'lainnya' => 'Lainnya',
+        ];
+        $category = $categoryNames[$request->category] ?? $request->category;
+
+        $report = DamageReport::create([
+            'user_id' => $user->id,
+            'facility_id' => $facility->id,
+            'category' => $category,
+            'location_detail' => $request->location_detail,
+            'description' => $request->description,
+            'photo' => $photoPath,
+            'status' => 'baru',
+        ]);
+
+        return response()->json([
+            'message' => 'Laporan kerusakan fasilitas berhasil dikirim.',
+            'report' => [
+                'id' => $report->id,
+                'facility' => $facility->name,
+                'category' => $report->category,
+                'location' => $report->location_detail,
+                'date' => $report->created_at->translatedFormat('d F Y'),
+                'description' => $report->description,
+                'photo' => $photoPath ? basename($photoPath) : 'Tidak ada foto',
+                'status' => 'Baru',
+                'status_class' => 'new',
+            ],
+        ], 201);
+    }
+
+    /**
+     * List all reports for Petugas / Admin (US 8).
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = DamageReport::with(['facility', 'user'])->orderBy('created_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $reports = $query->get();
+
+        $data = $reports->map(function ($rep) {
+            $statusText = match ($rep->status) {
+                'baru' => 'Baru',
+                'diproses' => 'Diproses',
+                'selesai' => 'Selesai',
+                'ditolak' => 'Ditolak',
+                default => ucfirst($rep->status),
+            };
+
+            return [
+                'id' => $rep->id,
+                'row_id' => 'row-damage-' . $rep->id,
+                'name' => $rep->user ? $rep->user->name : 'Pelapor',
+                'category' => strtoupper($rep->category),
+                'facility' => $rep->facility ? $rep->facility->name : '-',
+                'location' => $rep->location_detail,
+                'description' => $rep->description,
+                'photo' => $rep->photo ? basename($rep->photo) : 'Tidak ada foto',
+                'photo_url' => $rep->photo ? Storage::url($rep->photo) : null,
+                'status' => $statusText,
+                'status_class' => $rep->status,
+                'resolution' => $rep->resolution_note ?? '',
+                'rejectReason' => $rep->reject_reason ?? '',
+                'date' => $rep->created_at ? $rep->created_at->translatedFormat('d M Y') : '-',
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Update damage report status (US 11 - Petugas/Admin).
+     */
+    public function updateStatus(Request $request, $id): JsonResponse
+    {
+        $report = DamageReport::findOrFail($id);
+
+        $request->validate([
+            'status' => 'required|in:baru,diproses,selesai,ditolak',
+            'resolution_note' => 'required_if:status,selesai|nullable|string',
+            'reject_reason' => 'required_if:status,ditolak|nullable|string',
+        ], [
+            'resolution_note.required_if' => 'Catatan resolusi teknis wajib diisi sebelum menutup laporan!',
+            'reject_reason.required_if' => 'Alasan penolakan laporan wajib diisi!',
+        ]);
+
+        $updateData = ['status' => $request->status];
+
+        if ($request->status === 'selesai') {
+            $updateData['resolution_note'] = $request->resolution_note;
+        } elseif ($request->status === 'ditolak') {
+            $updateData['reject_reason'] = $request->reject_reason;
+        }
+
+        $report->update($updateData);
+
+        return response()->json([
+            'message' => 'Status laporan kerusakan berhasil diperbarui.',
+            'report' => $report,
+        ]);
+    }
+}

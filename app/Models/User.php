@@ -35,4 +35,39 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(DamageReport::class);
+    }
+
+    public function damageReports()
+    {
+        return $this->hasMany(DamageReport::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === 'admin';
+    }
+
+    public function isPetugas(): bool
+    {
+        return in_array(strtolower($this->role ?? ''), ['petugas', 'admin']);
+    }
+
+    public function isPengguna(): bool
+    {
+        return in_array(strtolower($this->role ?? ''), ['pengguna', 'user']);
+    }
+
+    public function isActive(): bool
+    {
+        return in_array(strtolower($this->status ?? ''), ['aktif', 'active']);
+    }
 }

@@ -5,9 +5,41 @@ const availabilityDate = document.querySelector("#availability-date");
 const availabilityFacilityName = document.querySelector(
   "#availability-facility-name",
 );
+const timeListContainer = document.querySelector(".availability-time-list");
+let currentFacilityForAvailability = "";
+
+async function fetchAvailability(facilityName, date) {
+  if (!timeListContainer) return;
+  try {
+    const url = `/api/facilities/${encodeURIComponent(facilityName)}/availability` + (date ? `?date=${date}` : "");
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.slots && data.slots.length > 0) {
+      timeListContainer.innerHTML = "";
+      data.slots.forEach(slot => {
+        const item = document.createElement("div");
+        item.className = "availability-time-item";
+        item.innerHTML = `
+          <span class="availability-time">${slot.time}</span>
+          <span class="availability-status ${slot.status}">${slot.status_label}</span>
+        `;
+        timeListContainer.appendChild(item);
+      });
+    }
+  } catch (e) {
+    console.error("Availability fetch error:", e);
+  }
+}
 
 function openAvailability(facilityName) {
-  availabilityFacilityName.textContent = facilityName;
+  currentFacilityForAvailability = facilityName;
+  if (availabilityFacilityName) {
+    availabilityFacilityName.textContent = facilityName;
+  }
+
+  const selectedDate = availabilityDate ? availabilityDate.value : "";
+  fetchAvailability(facilityName, selectedDate);
 
   availabilityOverlay.classList.add("active");
   document.body.style.overflow = "hidden";
@@ -32,3 +64,11 @@ document.addEventListener("keydown", function (event) {
     closeAvailability();
   }
 });
+
+if (availabilityDate) {
+  availabilityDate.addEventListener("change", function () {
+    if (currentFacilityForAvailability) {
+      fetchAvailability(currentFacilityForAvailability, availabilityDate.value);
+    }
+  });
+}

@@ -4,7 +4,7 @@ const nameInput = document.querySelector("#name");
 const identityInput = document.querySelector("#identity_number");
 const emailInput = document.querySelector("#email");
 const passwordInput = document.querySelector("#password");
-const confirmationInput = document.querySelector("#password_confirmation");
+const confirmationInput = document.querySelector("#password-confirmation") || document.querySelector("#password_confirmation");
 
 const nameError = document.querySelector("#name-error");
 const identityError = document.querySelector("#identity-error");
@@ -15,10 +15,10 @@ const confirmationError = document.querySelector("#confirmation-error");
 const togglePassword = document.querySelector("#toggle-password");
 const toggleConfirmation = document.querySelector("#toggle-confirmation");
 
-const passwordIcon = togglePassword.querySelector(".material-symbols-outlined");
-const confirmationIcon = toggleConfirmation.querySelector(
+const passwordIcon = togglePassword ? togglePassword.querySelector(".material-symbols-outlined") : null;
+const confirmationIcon = toggleConfirmation ? toggleConfirmation.querySelector(
   ".material-symbols-outlined",
-);
+) : null;
 
 const requirementLength = document.querySelector("#requirement-length");
 const requirementLowercase = document.querySelector("#requirement-lowercase");
@@ -35,28 +35,33 @@ const allowedDomains = [
 ];
 
 function togglePasswordVisibility(input, icon, button) {
+  if (!input) return;
   if (input.type === "password") {
     input.type = "text";
-    icon.textContent = "visibility_off";
-    button.setAttribute("aria-label", "Sembunyikan password");
+    if (icon) icon.textContent = "visibility_off";
+    if (button) button.setAttribute("aria-label", "Sembunyikan password");
   } else {
     input.type = "password";
-    icon.textContent = "visibility";
-    button.setAttribute("aria-label", "Tampilkan password");
+    if (icon) icon.textContent = "visibility";
+    if (button) button.setAttribute("aria-label", "Tampilkan password");
   }
 }
 
-togglePassword.addEventListener("click", function () {
-  togglePasswordVisibility(passwordInput, passwordIcon, togglePassword);
-});
+if (togglePassword) {
+  togglePassword.addEventListener("click", function () {
+    togglePasswordVisibility(passwordInput, passwordIcon, togglePassword);
+  });
+}
 
-toggleConfirmation.addEventListener("click", function () {
-  togglePasswordVisibility(
-    confirmationInput,
-    confirmationIcon,
-    toggleConfirmation,
-  );
-});
+if (toggleConfirmation) {
+  toggleConfirmation.addEventListener("click", function () {
+    togglePasswordVisibility(
+      confirmationInput,
+      confirmationIcon,
+      toggleConfirmation,
+    );
+  });
+}
 
 function updatePasswordRequirements() {
   const password = passwordInput.value;
@@ -178,8 +183,51 @@ registerForm.addEventListener("submit", function (event) {
     return;
   }
 
-  console.log("Form registrasi valid");
-  console.log("Nama:", name);
-  console.log("NIM/NIP:", identityNumber);
-  console.log("Email:", email);
+  const submitButton = registerForm.querySelector("button[type='submit']");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Memproses...";
+  }
+
+  try {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        name: name,
+        identity_number: identityNumber,
+        email: email,
+        password: password,
+        password_confirmation: confirmation
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 422 && data.errors) {
+        if (data.errors.email) emailError.textContent = data.errors.email[0];
+        if (data.errors.identity_number) identityError.textContent = data.errors.identity_number[0];
+        if (data.errors.password) passwordError.textContent = data.errors.password[0];
+        if (data.errors.name) nameError.textContent = data.errors.name[0];
+        return;
+      }
+      alert(data.message || "Pendaftaran gagal. Silakan coba lagi.");
+      return;
+    }
+
+    alert(data.message || "Pendaftaran akun berhasil. Silakan tunggu verifikasi administrator sebelum login.");
+    window.location.href = "login.html";
+  } catch (err) {
+    console.error("Register error:", err);
+    alert("Tidak dapat terhubung ke server. Silakan coba lagi.");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Daftar";
+    }
+  }
 });

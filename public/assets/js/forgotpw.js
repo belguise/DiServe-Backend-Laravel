@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
                               emailInput.endsWith('@lectures.undip.ac.id') || 
                               emailInput.endsWith('@staff.undip.ac.id') ||
                               emailInput.endsWith('@officer.undip.ac.id') ||
+                              emailInput.endsWith('@facility.undip.ac.id') ||
                               emailInput.endsWith('@admin.undip.ac.id');
 
         if (!isValidDomain) {

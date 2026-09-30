@@ -1,3 +1,9 @@
+const token = localStorage.getItem("auth_token");
+
+if (!token) {
+    window.location.href = "login.html";
+}
+
 const reportForm = document.querySelector("#report-form");
 
 const facilityInput = document.querySelector("#facility");
@@ -25,13 +31,17 @@ const successPhoto = document.querySelector("#success-report-photo");
 
 let selectedFile = null;
 
-takePhotoButton.addEventListener("click", function () {
-    cameraInput.click();
-});
+if (takePhotoButton && cameraInput) {
+    takePhotoButton.addEventListener("click", function () {
+        cameraInput.click();
+    });
+}
 
-choosePhotoButton.addEventListener("click", function () {
-    galleryInput.click();
-});
+if (choosePhotoButton && galleryInput) {
+    choosePhotoButton.addEventListener("click", function () {
+        galleryInput.click();
+    });
+}
 
 function handlePhoto(file) {
     if (!file) {
@@ -42,31 +52,35 @@ function handlePhoto(file) {
     const maxFileSize = 5 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
-        fileError.textContent = "Format foto harus JPG, PNG, atau WEBP.";
-        selectedPhoto.textContent = "";
+        if (fileError) fileError.textContent = "Format foto harus JPG, PNG, atau WEBP.";
+        if (selectedPhoto) selectedPhoto.textContent = "";
         selectedFile = null;
         return;
     }
 
     if (file.size > maxFileSize) {
-        fileError.textContent = "Ukuran foto maksimal 5 MB.";
-        selectedPhoto.textContent = "";
+        if (fileError) fileError.textContent = "Ukuran foto maksimal 5 MB.";
+        if (selectedPhoto) selectedPhoto.textContent = "";
         selectedFile = null;
         return;
     }
 
     selectedFile = file;
-    fileError.textContent = "";
-    selectedPhoto.textContent = `Foto dipilih: ${file.name}`;
+    if (fileError) fileError.textContent = "";
+    if (selectedPhoto) selectedPhoto.textContent = `Foto dipilih: ${file.name}`;
 }
 
-cameraInput.addEventListener("change", function () {
-    handlePhoto(cameraInput.files[0]);
-});
+if (cameraInput) {
+    cameraInput.addEventListener("change", function () {
+        handlePhoto(cameraInput.files[0]);
+    });
+}
 
-galleryInput.addEventListener("change", function () {
-    handlePhoto(galleryInput.files[0]);
-});
+if (galleryInput) {
+    galleryInput.addEventListener("change", function () {
+        handlePhoto(galleryInput.files[0]);
+    });
+}
 
 function formatDate(date) {
     return new Date(date).toLocaleDateString("id-ID", {
@@ -74,14 +88,6 @@ function formatDate(date) {
         month: "long",
         year: "numeric"
     });
-}
-
-function saveReport(report) {
-    const reports = JSON.parse(localStorage.getItem("reports")) || [];
-
-    reports.unshift(report);
-
-    localStorage.setItem("reports", JSON.stringify(reports));
 }
 
 function showSuccessOverlay(report) {
@@ -99,40 +105,82 @@ function showSuccessOverlay(report) {
 function closeSuccessOverlay() {
     successOverlay.classList.remove("active");
     document.body.style.overflow = "";
+    window.location.href = "dashboard.html";
 }
 
-reportForm.addEventListener("submit", function (event) {
+reportForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     const facility = facilityInput.options[facilityInput.selectedIndex].text;
+    const facilityVal = facilityInput.value;
     const category = categoryInput.options[categoryInput.selectedIndex].text;
+    const categoryVal = categoryInput.value;
     const location = locationInput.value.trim();
     const description = descriptionInput.value.trim();
 
     if (description.length < 10) {
-        alert("Deskripsi masalah harus dijelaskan dengan lebih detail.");
+        alert("Deskripsi masalah harus dijelaskan dengan lebih detail (minimal 10 karakter).");
         return;
     }
 
-    const report = {
-        id: Date.now(),
-        facility: facility,
-        category: category,
-        location: location,
-        date: formatDate(new Date()),
-        status: "Baru",
-        statusClass: "new",
-        description: description,
-        photo: selectedFile ? selectedFile.name : "Tidak ada foto",
-        note: "Laporan telah diterima dan menunggu pemeriksaan petugas."
-    };
+    const submitBtn = reportForm.querySelector("button[type='submit']");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Mengirim...";
+    }
 
-    saveReport(report);
-    showSuccessOverlay(report);
+    try {
+        const formData = new FormData();
+        formData.append("facility", facilityVal);
+        formData.append("category", categoryVal);
+        formData.append("location_detail", location);
+        formData.append("description", description);
+        if (selectedFile) {
+            formData.append("photo", selectedFile);
+        }
+
+        const response = await fetch("/api/reports", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || "Gagal mengirim laporan kerusakan.");
+            return;
+        }
+
+        const report = {
+            id: data.report.id,
+            facility: facility,
+            category: category,
+            location: location,
+            date: formatDate(new Date()),
+            status: "Baru",
+            statusClass: "new",
+            description: description,
+            photo: selectedFile ? selectedFile.name : "Tidak ada foto",
+            note: "Laporan telah diterima dan menunggu pemeriksaan petugas."
+        };
+
+        showSuccessOverlay(report);
+    } catch (err) {
+        console.error("Report submit error:", err);
+        alert("Tidak dapat terhubung ke server. Silakan coba lagi.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Kirim Laporan";
+        }
+    }
 });
 
 successClose.addEventListener("click", closeSuccessOverlay);
-
 successCloseButton.addEventListener("click", closeSuccessOverlay);
 
 successOverlay.addEventListener("click", function (event) {

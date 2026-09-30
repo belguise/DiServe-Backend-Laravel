@@ -1,98 +1,30 @@
-const dummyDataReservasi = {
-    'row-queue-1': {
-        name: 'Husni Ulyaa Khanifah',
-        nim: '24060124120021',
-        role: 'Mahasiswa',
-        phone: '0812-3456-7890',
-        email: 'husni@students.undip.ac.id',
-        facility: 'Laboratorium Komputer Terintegrasi - Gedung Acintya Prasada',
-        dates: '25 Okt 2026 - 26 Okt 2026',
-        times: '08:00 WIB - 11:30 WIB',
-        purpose: 'Pelatihan UI/UX Design Himpunan Mahasiswa Informatika',
-        filename: 'Proposal_Pelatihan_UIUX.pdf'
-    },
-    'row-queue-2': {
-        name: 'Lintang Aulia Nuraini',
-        nim: '24060124120017',
-        role: 'Mahasiswa',
-        phone: '0821-9876-5432',
-        email: 'lintang@students.undip.ac.id',
-        facility: 'Muladi Dome',
-        dates: '28 Okt 2026 - 28 Okt 2026',
-        times: '13:00 WIB - 16:00 WIB',
-        purpose: 'Seminar Generative AI untuk Mahasiswa Informatika',
-        filename: 'Izin_Acara_Seminar_AI.pdf'
-    },
-    'row-queue-3': {
-        name: "Hana Nafi'atul Haq",
-        nim: '24060124130081',
-        role: 'Mahasiswa',
-        phone: '0857-1234-5678',
-        email: 'hana@students.undip.ac.id',
-        facility: 'Gedung Auditorium Prof. Soedarto, S.H.',
-        dates: '30 Okt 2026 - 30 Okt 2026',
-        times: '09:00 WIB - 12:00 WIB',
-        purpose: 'Gathering Mahasiswa Baru Informatika',
-        filename: 'Proposal_Makrab_Informatika.pdf'
-    },
-    'row-queue-4': {
-        name: 'Birela Miadeta Purita',
-        nim: '24060124120002',
-        role: 'Mahasiswa',
-        phone: '0838-8765-4321',
-        email: 'birela@students.undip.ac.id',
-        facility: 'Polytron Stadium',
-        dates: '02 Nov 2026 - 02 Nov 2026',
-        times: '10:00 WIB - 14:00 WIB',
-        purpose: 'Pertandingan Badminton Tingkat Fakultas',
-        filename: 'Jadwal_Tanding_BEM.pdf'
+const token = localStorage.getItem("auth_token");
+const user = JSON.parse(localStorage.getItem("user") || "null");
+
+if (!token || !user || !["petugas", "admin"].includes(user.role)) {
+    window.location.href = "login.html";
+}
+
+// User Profile in Sidebar
+const profileName = document.querySelector(".sidebar-footer .user-info p");
+const profileRole = document.querySelector(".sidebar-footer .user-info span");
+const profileAvatar = document.querySelector(".sidebar-footer .user-avatar");
+if (user && user.name) {
+    if (profileName) profileName.textContent = user.name;
+    if (profileRole) profileRole.textContent = user.role === "admin" ? "Admin" : "Petugas";
+    if (profileAvatar) {
+        const initials = user.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+        profileAvatar.textContent = initials;
     }
-};
+}
 
-
-const dummyDataKerusakan = {
-    'row-damage-1': {
-        name: 'Husni Ulyaa Khanifah',
-        category: 'KELISTRIKAN',
-        facility: 'Laboratorium Sentral FK',
-        location: 'Ruang 203, Lantai 2 (Area Praktikum)',
-        description: 'Terjadi konsleting pada stop kontak meja nomor 3 dan 4. Mengeluarkan bau hangus.',
-        photo: 'IMG_Konslet_Lab.jpg',
-        resolution: '',
-        rejectReason: ''
-    },
-    'row-damage-2': {
-        name: 'Lintang Aulia Nuraini',
-        category: 'INFRASTRUKTUR BANGUNAN',
-        facility: 'Gedung Auditorium Prof. Soedarto, S.H.',
-        location: 'Atap sayap kiri auditorium',
-        description: 'Ditemukan kebocoran cukup parah pada atap saat hujan deras kemarin.',
-        photo: 'IMG_Bocor_Atap.jpg',
-        resolution: '',
-        rejectReason: ''
-    },
-    'row-damage-3': {
-        name: "Hana Nafi'atul Haq",
-        category: 'INVENTARIS RUANGAN',
-        facility: 'Laboratorium Komputer Terintegrasi - Gedung Acintya Prasada',
-        location: 'Lab Komputer A, Baris ke-2',
-        description: 'Terdapat 3 kursi yang rodanya patah dan 1 meja yang kakinya goyang.',
-        photo: 'IMG_Kursi_Patah.jpg',
-        resolution: 'Telah dilakukan penggantian 3 unit kursi baru dan perbaikan baut pada kaki meja.',
-        rejectReason: ''
-    },
-    'row-damage-4': {
-        name: "Birela Miadeta Purita",
-        category: 'INFRASTRUKTUR BANGUNAN',
-        facility: 'Polytron Stadium',
-        location: 'Tribun Penonton VIP',
-        description: 'Lampu sorot lapangan mati satu di bagian sudut kanan.',
-        photo: 'IMG_Lampu_Mati.jpg',
-        resolution: '',
-        rejectReason: 'Laporan duplikat. Kerusakan sudah dilaporkan sebelumnya dan sedang menunggu suku cadang.'
-    }
-};
-
+// Global data stores
+let reservationsMap = {};
+let damageReportsMap = {};
+let currentReservationId = null;
+let currentReservationRowId = null;
+let currentDamageId = null;
+let currentDamageRowId = null;
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => {
@@ -115,7 +47,6 @@ function switchTab(tabId) {
     }
 }
 
-
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -123,13 +54,11 @@ function closeModal(modalId) {
     }
 }
 
-
 function resetFormInputs() {
     document.querySelectorAll('.modal-form textarea').forEach(textarea => {
         textarea.value = '';
     });
 }
-
 
 function filterTable(inputId, tableId) {
     const input = document.getElementById(inputId);
@@ -202,14 +131,17 @@ function filterTable(inputId, tableId) {
     }
 }
 
-
+// Reservation Detail & Actions
 function openReservationDetail(rowId, status, reasonText = "") {
     const modal = document.getElementById('modal-reservation-detail');
-    const data = dummyDataReservasi[rowId];
+    const data = reservationsMap[rowId];
 
     if (!data || !modal) {
         return;
     }
+
+    currentReservationId = data.id;
+    currentReservationRowId = rowId;
 
     document.getElementById('detail-user-name').textContent = data.name;
     document.getElementById('detail-user-id').textContent = data.nim;
@@ -233,73 +165,144 @@ function openReservationDetail(rowId, status, reasonText = "") {
     actionApprove.classList.add('hidden');
     actionCancel.classList.add('hidden');
 
-    if (status === 'Menunggu') {
+    if (status === 'Menunggu' || data.status_class === 'pending') {
         actionReject.classList.remove('hidden');
         actionApprove.classList.remove('hidden');
-    } else if (status === 'Disetujui') {
+    } else if (status === 'Disetujui' || data.status_class === 'approved') {
         actionCancel.classList.remove('hidden');
-    } else if (status === 'Ditolak' || status === 'Dibatalkan') {
+    } else if (status === 'Ditolak' || status === 'Dibatalkan' || ['rejected', 'cancelled'].includes(data.status_class)) {
         reasonBox.classList.remove('hidden');
-        reasonMsg.textContent = reasonText || "Tidak ada alasan yang dicantumkan.";
+        reasonMsg.textContent = data.rejection_reason || data.cancellation_reason || reasonText || "Tidak ada alasan yang dicantumkan.";
     }
 
     modal.classList.remove('hidden');
 }
 
+async function approveFromModal() {
+    if (!currentReservationId) return;
 
-function approveFromModal() {
-    alert("Pengajuan reservasi berhasil disetujui!");
-    closeModal('modal-reservation-detail');
+    try {
+        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/approve`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || "Gagal menyetujui reservasi.");
+            return;
+        }
+
+        alert("Pengajuan reservasi berhasil disetujui!");
+        closeModal('modal-reservation-detail');
+        loadPetugasData();
+    } catch (e) {
+        console.error("Approve error:", e);
+        alert("Terjadi kesalahan saat menyetujui reservasi.");
+    }
 }
-
 
 function rejectFromModal() {
     closeModal('modal-reservation-detail');
     document.getElementById('modal-reject').classList.remove('hidden');
 }
 
-
-function confirmReject() {
+async function confirmReject() {
+    if (!currentReservationId) return;
     const reasonInput = document.getElementById('reject-reason');
-    if (reasonInput.value.trim() === '') {
+    if (!reasonInput || reasonInput.value.trim() === '') {
         alert('Alasan penolakan wajib diisi!');
         return;
     }
-    alert(`Pengajuan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
-    closeModal('modal-reject');
-    resetFormInputs();
-}
 
+    try {
+        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/reject`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                reason: reasonInput.value.trim()
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || "Gagal menolak reservasi.");
+            return;
+        }
+
+        alert(`Pengajuan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
+        closeModal('modal-reject');
+        resetFormInputs();
+        loadPetugasData();
+    } catch (e) {
+        console.error("Reject error:", e);
+        alert("Terjadi kesalahan saat menolak reservasi.");
+    }
+}
 
 function openEmergencyFromDetail() {
     closeModal('modal-reservation-detail');
     document.getElementById('modal-emergency').classList.remove('hidden');
 }
 
-
-function confirmEmergency() {
+async function confirmEmergency() {
+    if (!currentReservationId) return;
     const reasonInput = document.getElementById('emergency-reason');
-    if (reasonInput.value.trim() === '') {
+    if (!reasonInput || reasonInput.value.trim() === '') {
         alert('Alasan pembatalan darurat wajib diisi!');
         return;
     }
-    alert(`Pembatalan darurat berhasil dikirim.\nAlasan: ${reasonInput.value}`);
-    closeModal('modal-emergency');
-    resetFormInputs();
+
+    try {
+        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/emergency-cancel`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                reason: reasonInput.value.trim()
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || "Gagal melakukan pembatalan darurat.");
+            return;
+        }
+
+        alert(`Pembatalan darurat berhasil dikirim.\nAlasan: ${reasonInput.value}`);
+        closeModal('modal-emergency');
+        resetFormInputs();
+        loadPetugasData();
+    } catch (e) {
+        console.error("Emergency cancel error:", e);
+        alert("Terjadi kesalahan saat pembatalan darurat.");
+    }
 }
 
-
-let currentDamageRowId = '';
-
-
+// Damage Report Detail & Actions
 function openDamageDetail(rowId, status) {
     const modal = document.getElementById('modal-damage-detail');
-    const data = dummyDataKerusakan[rowId];
+    const data = damageReportsMap[rowId];
 
     if (!data || !modal) {
         return;
     }
     currentDamageRowId = rowId;
+    currentDamageId = data.id;
 
     document.getElementById('dmg-user-name').textContent = data.name;
     document.getElementById('dmg-category').textContent = data.category;
@@ -323,91 +326,343 @@ function openDamageDetail(rowId, status) {
     actionResolve?.classList.add('hidden');
     actionReject?.classList.add('hidden');
 
-    if (status === 'Baru') {
+    if (status === 'Baru' || data.status_class === 'baru') {
         actionProcess?.classList.remove('hidden');
         actionReject?.classList.remove('hidden');
-    } else if (status === 'Diproses') {
+    } else if (status === 'Diproses' || data.status_class === 'diproses') {
         actionResolve?.classList.remove('hidden');
-    } else if (status === 'Selesai') {
+    } else if (status === 'Selesai' || data.status_class === 'selesai') {
         resBox.classList.remove('hidden');
-        resMsg.textContent = data.resolution;
-    } else if (status === 'Ditolak') {
+        resMsg.textContent = data.resolution || "-";
+    } else if (status === 'Ditolak' || data.status_class === 'ditolak') {
         rejBox.classList.remove('hidden');
-        rejMsg.textContent = data.rejectReason;
+        rejMsg.textContent = data.rejectReason || "-";
     }
 
     modal.classList.remove('hidden');
 }
 
+async function processDamageFromModal() {
+    if (!currentDamageId) return;
 
-function processDamageFromModal() {
-    alert("Status laporan diubah menjadi SEDANG DIPROSES. Tim teknisi telah dikerahkan.");
-    closeModal('modal-damage-detail');
+    try {
+        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                status: "diproses"
+            })
+        });
+
+        if (!response.ok) {
+            alert("Gagal memperbarui status laporan.");
+            return;
+        }
+
+        alert("Status laporan diubah menjadi SEDANG DIPROSES. Tim teknisi telah dikerahkan.");
+        closeModal('modal-damage-detail');
+        loadPetugasData();
+    } catch (e) {
+        console.error("Process damage error:", e);
+    }
 }
-
 
 function openResolutionFromDetail() {
     closeModal('modal-damage-detail');
     document.getElementById('modal-resolution').classList.remove('hidden');
 }
 
-
-function confirmResolution() {
+async function confirmResolution() {
+    if (!currentDamageId) return;
     const noteInput = document.getElementById('resolution-note');
-    if (noteInput.value.trim() === '') {
+    if (!noteInput || noteInput.value.trim() === '') {
         alert('Catatan resolusi teknis wajib diisi sebelum menutup laporan!');
         return;
     }
 
-    alert('Laporan Kerusakan berhasil ditutup dengan status SELESAI.');
-    closeModal('modal-resolution');
-    resetFormInputs();
-}
+    try {
+        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                status: "selesai",
+                resolution_note: noteInput.value.trim()
+            })
+        });
 
+        if (!response.ok) {
+            alert("Gagal menyelesaikan laporan.");
+            return;
+        }
+
+        alert('Laporan Kerusakan berhasil ditutup dengan status SELESAI.');
+        closeModal('modal-resolution');
+        resetFormInputs();
+        loadPetugasData();
+    } catch (e) {
+        console.error("Resolve error:", e);
+    }
+}
 
 function rejectDamageFromModal() {
     closeModal('modal-damage-detail');
     document.getElementById('modal-damage-reject').classList.remove('hidden');
 }
 
-
-function confirmDamageReject() {
+async function confirmDamageReject() {
+    if (!currentDamageId) return;
     const reasonInput = document.getElementById('damage-reject-reason');
-    if (reasonInput.value.trim() === '') {
+    if (!reasonInput || reasonInput.value.trim() === '') {
         alert('Alasan penolakan laporan wajib diisi!');
         return;
     }
 
-    alert(`Laporan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
-    closeModal('modal-damage-reject');
-    resetFormInputs();
+    try {
+        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                status: "ditolak",
+                reject_reason: reasonInput.value.trim()
+            })
+        });
+
+        if (!response.ok) {
+            alert("Gagal menolak laporan.");
+            return;
+        }
+
+        alert(`Laporan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
+        closeModal('modal-damage-reject');
+        resetFormInputs();
+        loadPetugasData();
+    } catch (e) {
+        console.error("Reject damage error:", e);
+    }
 }
 
-
-function toggleMaintenance(rowId) {
+// Facility Maintenance Toggle (US 12)
+async function toggleMaintenance(rowId, facilityId) {
     const row = document.getElementById(rowId);
-    if (!row) {
-        return;
-    }
+    if (!row) return;
 
-    const badge = row.querySelector('.badge');
-    const actionButton = row.querySelector('button');
+    const facId = facilityId || row.dataset.facilityId;
+    if (!facId) return;
 
-    if (badge.innerText.includes('Aktif')) {
-        badge.className = 'badge danger';
-        badge.innerText = 'Dalam Perbaikan';
+    try {
+        const response = await fetch(`/api/petugas/facilities/${facId}/maintenance`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            }
+        });
 
-        actionButton.className = 'button button-primary button-small';
-        actionButton.innerText = 'Aktifkan Kembali';
+        const data = await response.json();
+        if (!response.ok) {
+            alert(data.message || "Gagal mengubah status fasilitas.");
+            return;
+        }
 
-        alert('Status diubah ke DALAM PERBAIKAN.\nSeluruh slot kalender publik pada fasilitas ini otomatis terkunci.');
-    } else {
-        badge.className = 'badge success';
-        badge.innerText = 'Aktif Normal';
+        const badge = row.querySelector('.badge');
+        const actionButton = row.querySelector('button');
 
-        actionButton.className = 'button button-outline button-small';
-        actionButton.innerText = 'Set "Perbaikan"';
+        if (data.facility.status === 'maintenance') {
+            if (badge) {
+                badge.className = 'badge danger';
+                badge.innerText = 'Dalam Perbaikan';
+            }
+            if (actionButton) {
+                actionButton.className = 'button button-primary button-small';
+                actionButton.innerText = 'Aktifkan Kembali';
+            }
+            alert('Status diubah ke DALAM PERBAIKAN.\nSeluruh slot kalender publik pada fasilitas ini otomatis terkunci.');
+        } else {
+            if (badge) {
+                badge.className = 'badge success';
+                badge.innerText = 'Aktif Normal';
+            }
+            if (actionButton) {
+                actionButton.className = 'button button-outline button-small';
+                actionButton.innerText = 'Set "Perbaikan"';
+            }
+            alert('Fasilitas telah DIAKTIFKAN KEMBALI.\nPeminjaman publik dapat diajukan kembali.');
+        }
 
-        alert('Fasilitas telah DIAKTIFKAN KEMBALI.\nPeminjaman publik dapat diajukan kembali.');
+        loadPetugasData();
+    } catch (e) {
+        console.error("Toggle maintenance error:", e);
     }
 }
+
+// Load real data from Backend for Petugas
+async function loadPetugasData() {
+    try {
+        // 1. Dashboard summary & stats (US 8)
+        const dashRes = await fetch("/api/petugas/dashboard", {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            }
+        });
+
+        if (dashRes.ok) {
+            const dashData = await dashRes.json();
+            const stats = dashData.stats;
+
+            // Stat Cards
+            const statPending = document.getElementById("stat-pending");
+            if (statPending) statPending.textContent = stats.pending_queue;
+
+            const statCards = document.querySelectorAll(".stats-grid .stat-card h3");
+            if (statCards.length >= 4) {
+                statCards[0].textContent = stats.pending_queue;
+                statCards[1].textContent = stats.new_reports;
+                statCards[2].textContent = stats.processing_reports;
+                statCards[3].textContent = stats.maintenance_facilities;
+            }
+
+            const badgeQueue = document.getElementById("badge-queue-count");
+            if (badgeQueue) badgeQueue.textContent = stats.pending_queue;
+
+            // Maintenance Table
+            const maintTable = document.querySelector("#table-maintenance tbody");
+            if (maintTable && dashData.facilities) {
+                maintTable.innerHTML = "";
+                dashData.facilities.forEach((fac, idx) => {
+                    const rowId = `row-ops-${fac.id}`;
+                    const isMaint = fac.status === "maintenance";
+                    const badgeClass = isMaint ? "badge danger" : "badge success";
+                    const badgeText = isMaint ? "Dalam Perbaikan" : "Aktif Normal";
+                    const btnClass = isMaint ? "button button-primary button-small" : "button button-outline button-small";
+                    const btnText = isMaint ? "Aktifkan Kembali" : 'Set "Perbaikan"';
+
+                    const tr = document.createElement("tr");
+                    tr.id = rowId;
+                    tr.dataset.facilityId = fac.id;
+                    tr.innerHTML = `
+                        <td><div class="font-bold">${fac.name}</div></td>
+                        <td>${fac.location}</td>
+                        <td><span class="${badgeClass}">${badgeText}</span></td>
+                        <td class="text-center"><button class="${btnClass}" onclick="toggleMaintenance('${rowId}', ${fac.id})">${btnText}</button></td>
+                    `;
+                    maintTable.appendChild(tr);
+                });
+            }
+        }
+
+        // 2. Queue Reservations Table (US 8)
+        const queueRes = await fetch("/api/petugas/queue", {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            }
+        });
+
+        if (queueRes.ok) {
+            const queueData = await queueRes.json();
+            const queue = queueData.data || [];
+            const queueTable = document.querySelector("#table-queue tbody");
+
+            reservationsMap = {};
+            if (queueTable) {
+                queueTable.innerHTML = "";
+                queue.forEach(res => {
+                    reservationsMap[res.row_id] = res;
+
+                    const badgeClass = matchBadge(res.status_class);
+                    const btnClass = res.status_class === 'pending' ? 'button button-primary button-small' : 'button button-outline button-small';
+
+                    const tr = document.createElement("tr");
+                    tr.id = res.row_id;
+                    tr.innerHTML = `
+                        <td>
+                            <div class="font-bold">${res.name}</div>
+                            <div class="text-accent">${res.role}</div>
+                        </td>
+                        <td><div class="font-bold">${res.facility}</div></td>
+                        <td>
+                            <div class="font-bold">${res.dates}</div>
+                            <div class="text-small text-muted">${res.times}</div>
+                        </td>
+                        <td><span class="badge ${badgeClass}">${res.status}</span></td>
+                        <td class="text-center">
+                            <button class="${btnClass}" onclick="openReservationDetail('${res.row_id}', '${res.status}')">
+                                <span class="material-symbols-outlined icon-small">visibility</span> Detail
+                            </button>
+                        </td>
+                    `;
+                    queueTable.appendChild(tr);
+                });
+            }
+        }
+
+        // 3. Damage Reports Table (US 8)
+        const dmgRes = await fetch("/api/petugas/damage-reports", {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            }
+        });
+
+        if (dmgRes.ok) {
+            const dmgData = await dmgRes.json();
+            const reports = dmgData.data || [];
+            const dmgTable = document.querySelector("#table-damage tbody");
+
+            damageReportsMap = {};
+            if (dmgTable) {
+                dmgTable.innerHTML = "";
+                reports.forEach(rep => {
+                    damageReportsMap[rep.row_id] = rep;
+
+                    const badgeClass = matchBadge(rep.status_class);
+                    const btnClass = rep.status_class === 'baru' ? 'button button-primary button-small' : 'button button-outline button-small';
+
+                    const tr = document.createElement("tr");
+                    tr.id = rep.row_id;
+                    tr.innerHTML = `
+                        <td>
+                            <div class="font-bold">${rep.facility}</div>
+                            <div class="text-small text-muted">Pelapor: ${rep.name}</div>
+                        </td>
+                        <td><span class="badge neutral">${rep.category}</span></td>
+                        <td>${rep.description.length > 40 ? rep.description.substring(0, 40) + '...' : rep.description}</td>
+                        <td><span class="badge ${badgeClass}">${rep.status}</span></td>
+                        <td class="text-center">
+                            <button class="${btnClass}" onclick="openDamageDetail('${rep.row_id}', '${rep.status}')">
+                                <span class="material-symbols-outlined icon-small">visibility</span> Detail
+                            </button>
+                        </td>
+                    `;
+                    dmgTable.appendChild(tr);
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Petugas data load error:", e);
+    }
+}
+
+function matchBadge(status) {
+    return match (status) {
+        'pending', 'diproses', 'warning' => 'warning',
+        'approved', 'selesai', 'success' => 'success',
+        'rejected', 'ditolak', 'danger' => 'danger',
+        default => 'neutral',
+    };
+}
+
+loadPetugasData();

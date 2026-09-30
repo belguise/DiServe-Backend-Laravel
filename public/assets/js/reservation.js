@@ -1,3 +1,9 @@
+const token = localStorage.getItem("auth_token");
+
+if (!token) {
+    window.location.href = "login.html";
+}
+
 const reservationForm = document.querySelector("#reservation-form");
 
 const facilityInput = document.querySelector("#facility");
@@ -21,16 +27,18 @@ const successFile = document.querySelector("#success-reservation-file");
 
 const today = new Date().toISOString().split("T")[0];
 
-startDateInput.min = today;
-endDateInput.min = today;
+if (startDateInput && endDateInput) {
+    startDateInput.min = today;
+    endDateInput.min = today;
 
-startDateInput.addEventListener("change", function () {
-    endDateInput.min = startDateInput.value;
+    startDateInput.addEventListener("change", function () {
+        endDateInput.min = startDateInput.value;
 
-    if (endDateInput.value && endDateInput.value < startDateInput.value) {
-        endDateInput.value = startDateInput.value;
-    }
-});
+        if (endDateInput.value && endDateInput.value < startDateInput.value) {
+            endDateInput.value = startDateInput.value;
+        }
+    });
+}
 
 function formatDate(date) {
     return new Date(date + "T00:00:00").toLocaleDateString("id-ID", {
@@ -38,18 +46,6 @@ function formatDate(date) {
         month: "long",
         year: "numeric"
     });
-}
-
-function getFacilityName() {
-    return facilityInput.options[facilityInput.selectedIndex].text;
-}
-
-function saveReservation(reservation) {
-    const reservations = JSON.parse(localStorage.getItem("reservations")) || [];
-
-    reservations.unshift(reservation);
-
-    localStorage.setItem("reservations", JSON.stringify(reservations));
 }
 
 function showSuccessOverlay(reservation) {
@@ -66,27 +62,24 @@ function showSuccessOverlay(reservation) {
 function closeSuccessOverlay() {
     successOverlay.classList.remove("active");
     document.body.style.overflow = "";
+    window.location.href = "reservations.html";
 }
 
-reservationForm.addEventListener("submit", function (event) {
+reservationForm.addEventListener("submit", async function (event) {
     event.preventDefault();
     
     const facilitySelect = facilityInput;
     const selectedOption = facilitySelect.options[facilitySelect.selectedIndex];
     const facilityName = selectedOption.text;
     const facilityValue = facilitySelect.value;
-    const facilitiesUnderMaintenance = ["auditorium", "gedung-laboratorium"]; 
-    if (facilitiesUnderMaintenance.includes(facilityValue)) {
-        alert(`Reservasi Gagal! Fasilitas "${facilityName}" saat ini sedang dalam perbaikan dan tidak tersedia untuk reservasi.`);
-        return;
-    }
 
     const startDate = startDateInput.value;
     const endDate = endDateInput.value;
     const startTime = startTimeInput.value;
     const endTime = endTimeInput.value;
     const purpose = purposeInput.value.trim();
-    const supportingFile = supportingFileInput.files[0];
+    const supportingFile = supportingFileInput ? supportingFileInput.files[0] : null;
+
     if (endDate < startDate) {
         alert("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
         return;
@@ -100,22 +93,63 @@ reservationForm.addEventListener("submit", function (event) {
         return;
     }
 
-    const reservation = {
-        id: Date.now(),
-        facility: facilityName,
-        startDate: startDate,
-        endDate: endDate,
-        date: startDate === endDate ? formatDate(startDate) : formatDate(startDate) + " - " + formatDate(endDate),
-        time: startTime + " - " + endTime,
-        purpose: purpose,
-        file: supportingFile ? supportingFile.name : "Tidak ada berkas",
-        status: "Menunggu",
-        statusClass: "pending",
-        submitted: new Date().toISOString()
-    };
+    const submitBtn = reservationForm.querySelector("button[type='submit']");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Mengirim...";
+    }
 
-    saveReservation(reservation);
-    showSuccessOverlay(reservation);
+    try {
+        const formData = new FormData();
+        formData.append("facility", facilityValue);
+        formData.append("start_date", startDate);
+        formData.append("end_date", endDate);
+        formData.append("start_time", startTime);
+        formData.append("end_time", endTime);
+        formData.append("purpose", purpose);
+        if (supportingFile) {
+            formData.append("supporting_file", supportingFile);
+        }
+
+        const response = await fetch("/api/reservations", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || "Gagal membuat reservasi.");
+            return;
+        }
+
+        const reservation = {
+            id: data.reservation.id,
+            facility: facilityName,
+            startDate: startDate,
+            endDate: endDate,
+            date: startDate === endDate ? formatDate(startDate) : formatDate(startDate) + " - " + formatDate(endDate),
+            time: startTime + " - " + endTime,
+            purpose: purpose,
+            file: supportingFile ? supportingFile.name : "Tidak ada berkas",
+            status: "Menunggu",
+            statusClass: "pending",
+        };
+
+        showSuccessOverlay(reservation);
+    } catch (err) {
+        console.error("Reservation submit error:", err);
+        alert("Tidak dapat terhubung ke server. Silakan coba lagi.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Ajukan Reservasi";
+        }
+    }
 });
 
 successClose.addEventListener("click", closeSuccessOverlay);

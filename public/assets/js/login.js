@@ -4,7 +4,7 @@ const passwordInput = document.querySelector("#password");
 const emailError = document.querySelector("#email-error");
 const passwordError = document.querySelector("#password-error");
 const passwordToggle = document.querySelector("#toggle-password");
-const passwordIcon = passwordToggle.querySelector(".material-symbols-outlined");
+const passwordIcon = passwordToggle ? passwordToggle.querySelector(".material-symbols-outlined") : null;
 const loginButton = document.querySelector(".btn-login");
 
 const emailPattern =
@@ -15,20 +15,23 @@ const allowedDomains = [
     "@lectures.undip.ac.id",
     "@staff.undip.ac.id",
     "@officer.undip.ac.id",
+    "@facility.undip.ac.id",
     "@admin.undip.ac.id"
 ];
 
-passwordToggle.addEventListener("click", function () {
-    if (passwordInput.type === "password") {
-        passwordInput.type = "text";
-        passwordIcon.textContent = "visibility_off";
-        passwordToggle.setAttribute("aria-label", "Sembunyikan password");
-    } else {
-        passwordInput.type = "password";
-        passwordIcon.textContent = "visibility";
-        passwordToggle.setAttribute("aria-label", "Tampilkan password");
-    }
-});
+if (passwordToggle && passwordInput) {
+    passwordToggle.addEventListener("click", function () {
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+            if (passwordIcon) passwordIcon.textContent = "visibility_off";
+            passwordToggle.setAttribute("aria-label", "Sembunyikan password");
+        } else {
+            passwordInput.type = "password";
+            if (passwordIcon) passwordIcon.textContent = "visibility";
+            passwordToggle.setAttribute("aria-label", "Tampilkan password");
+        }
+    });
+}
 
 loginForm.addEventListener("submit", async function (event) {
     event.preventDefault();
