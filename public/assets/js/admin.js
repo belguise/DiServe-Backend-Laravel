@@ -44,7 +44,7 @@ function toggleFacilityStatus(rowId, facilityName) {
     const actionBtn = row.querySelectorAll('.action-buttons button')[1];
 
     if (badge.innerText.includes('Aktif')) {
-        if (confirm(`Nonaktifkan "${facilityName}"?\nFasilitas ini tidak akan tampil di katalog peminjaman publik.`)) {
+        if (confirm(`Nonaktifkan "${facilityName}"?\nFasilitas ini di-nonaktifkan`)) {
             badge.className = 'badge neutral';
             badge.innerText = 'Nonaktif';
             
