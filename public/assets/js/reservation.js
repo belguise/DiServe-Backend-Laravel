@@ -1,4 +1,5 @@
 const token = localStorage.getItem("auth_token");
+const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
 
 if (!token) {
     window.location.href = "login.html";
@@ -111,7 +112,7 @@ reservationForm.addEventListener("submit", async function (event) {
             formData.append("supporting_file", supportingFile);
         }
 
-        const response = await fetch("/api/reservations", {
+        const response = await fetch(`${API_BASE}/api/reservations`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -165,3 +166,29 @@ document.addEventListener("keydown", function (event) {
         closeSuccessOverlay();
     }
 });
+
+async function loadFacilityOptions() {
+    if (!facilityInput) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/facilities`);
+        if (res.ok) {
+            const data = await res.json();
+            const facilities = data.data || [];
+            if (facilities.length > 0) {
+                const currentVal = facilityInput.value;
+                facilityInput.innerHTML = '<option value="">Pilih fasilitas</option>';
+                facilities.forEach(f => {
+                    const opt = document.createElement("option");
+                    opt.value = f.slug || f.id;
+                    opt.textContent = f.name;
+                    facilityInput.appendChild(opt);
+                });
+                if (currentVal) facilityInput.value = currentVal;
+            }
+        }
+    } catch (e) {
+        console.error("Load facility options error:", e);
+    }
+}
+
+loadFacilityOptions();

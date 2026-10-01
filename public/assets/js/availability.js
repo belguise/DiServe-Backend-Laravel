@@ -10,8 +10,9 @@ let currentFacilityForAvailability = "";
 
 async function fetchAvailability(facilityName, date) {
   if (!timeListContainer) return;
+  const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
   try {
-    const url = `/api/facilities/${encodeURIComponent(facilityName)}/availability` + (date ? `?date=${date}` : "");
+    const url = `${API_BASE}/api/facilities/${encodeURIComponent(facilityName)}/availability` + (date ? `?date=${date}` : "");
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();

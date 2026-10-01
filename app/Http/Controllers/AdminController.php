@@ -141,7 +141,7 @@ class AdminController extends Controller
     /**
      * Verify self-registered account (US 15).
      */
-    public function verifyUser($id): JsonResponse
+    public function verifyUser(Request $request, $id): JsonResponse
     {
         $user = User::findOrFail($id);
         $user->update(['status' => 'aktif']);
@@ -172,7 +172,7 @@ class AdminController extends Controller
     /**
      * Toggle account access status between active and revoked/inactive (US 15).
      */
-    public function toggleUserStatus($id): JsonResponse
+    public function toggleUserStatus(Request $request, $id): JsonResponse
     {
         $user = User::findOrFail($id);
 

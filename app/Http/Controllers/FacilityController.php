@@ -114,12 +114,69 @@ class FacilityController extends Controller
     }
 
     /**
+     * Display a single facility (US 1, US 2).
+     */
+    public function show($id): JsonResponse
+    {
+        $decoded = urldecode($id);
+        $facility = is_numeric($id)
+            ? Facility::find($id)
+            : Facility::where('slug', $id)
+                ->orWhere('slug', Str::slug($decoded))
+                ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+                ->first();
+
+        if (!$facility) {
+            return response()->json([
+                'message' => 'Fasilitas tidak ditemukan.',
+            ], 404);
+        }
+
+        $rawImg = $facility->image;
+        $imageUrl = null;
+        if ($rawImg) {
+            if (str_starts_with($rawImg, 'http')) {
+                $imageUrl = $rawImg;
+            } elseif (str_starts_with($rawImg, 'assets/')) {
+                $imageUrl = asset($rawImg);
+            } else {
+                $imageUrl = asset('assets/images/' . $rawImg);
+            }
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $facility->id,
+                'name' => $facility->name,
+                'slug' => $facility->slug,
+                'category' => $facility->category ?? $facility->type,
+                'type' => $facility->type ?? $facility->category,
+                'description' => $facility->description,
+                'location' => $facility->location,
+                'capacity' => $facility->capacity,
+                'address' => $facility->address,
+                'image' => $imageUrl,
+                'image_name' => $rawImg ? basename($rawImg) : null,
+                'status' => $facility->status,
+                'availability_label' => $facility->isMaintenance() ? 'Dalam Perbaikan' : ($facility->isInactive() ? 'Nonaktif' : 'Tersedia'),
+                'availability_class' => $facility->isMaintenance() ? 'maintenance' : ($facility->isInactive() ? 'inactive' : 'available'),
+            ],
+        ]);
+    }
+
+    /**
      * Get availability slots for a facility on a specific date (US 1).
      * Privacy: Unauthenticated visitors do NOT see applicant names or purpose!
      */
     public function availability(Request $request, $id): JsonResponse
     {
-        $facility = is_numeric($id) ? Facility::find($id) : Facility::where('slug', $id)->orWhere('name', $id)->first();
+        $decoded = urldecode($id);
+        $facility = is_numeric($id)
+            ? Facility::find($id)
+            : Facility::where('slug', $id)
+                ->orWhere('slug', Str::slug($decoded))
+                ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+                ->first();
 
         if (!$facility) {
             return response()->json([
@@ -309,7 +366,7 @@ class FacilityController extends Controller
             $newStatus = $request->status;
         } else {
             // Context toggle:
-            if ($user->role === 'petugas') {
+            if ($request->is('*maintenance*') || strtolower($user->role ?? '') === 'petugas') {
                 // Petugas toggles maintenance <-> active (US 12)
                 $newStatus = $facility->isMaintenance() ? 'active' : 'maintenance';
             } else {

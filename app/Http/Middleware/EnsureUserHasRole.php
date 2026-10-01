@@ -29,19 +29,25 @@ class EnsureUserHasRole
             ], 403);
         }
 
-        $userRole = strtolower($user->role ?? '');
+        $userRole = strtolower(trim($user->role ?? ''));
         $normalizedUserRole = in_array($userRole, ['user', 'pengguna']) ? 'pengguna' : $userRole;
-        $normalizedAllowedRoles = array_map(function ($r) {
-            $lr = strtolower($r);
-            return in_array($lr, ['user', 'pengguna']) ? 'pengguna' : $lr;
-        }, $roles);
 
-        // Admins can also access officer/petugas endpoints if needed
-        if ($userRole === 'admin' && in_array('petugas', $normalizedAllowedRoles)) {
+        $allowedRoles = [];
+        foreach ($roles as $r) {
+            foreach (explode(',', $r) as $part) {
+                $trimmed = strtolower(trim($part));
+                if ($trimmed !== '') {
+                    $allowedRoles[] = in_array($trimmed, ['user', 'pengguna']) ? 'pengguna' : $trimmed;
+                }
+            }
+        }
+
+        // Admin has superuser privileges across all system operations
+        if ($userRole === 'admin') {
             return $next($request);
         }
 
-        if (!in_array($normalizedUserRole, $normalizedAllowedRoles)) {
+        if (!in_array($normalizedUserRole, $allowedRoles)) {
             return response()->json([
                 'message' => 'Akses ditolak. Anda tidak memiliki izin untuk tindakan ini.',
             ], 403);

@@ -73,8 +73,10 @@ loginForm.addEventListener("submit", async function (event) {
     loginButton.disabled = true;
     loginButton.textContent = "Memproses...";
 
+    const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
+
     try {
-        const response = await fetch("/api/auth/login", {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -124,6 +126,7 @@ loginForm.addEventListener("submit", async function (event) {
 
         switch (data.user.role) {
             case "user":
+            case "pengguna":
                 window.location.href = "dashboard.html";
                 break;
 

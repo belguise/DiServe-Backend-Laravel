@@ -1,5 +1,6 @@
 const token = localStorage.getItem("auth_token");
 const user = JSON.parse(localStorage.getItem("user") || "null");
+const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
 
 if (!token || !user || !["petugas", "admin"].includes(user.role)) {
     window.location.href = "login.html";
@@ -182,7 +183,7 @@ async function approveFromModal() {
     if (!currentReservationId) return;
 
     try {
-        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/approve`, {
+        const response = await fetch(`${API_BASE}/api/petugas/reservations/${currentReservationId}/approve`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -221,7 +222,7 @@ async function confirmReject() {
     }
 
     try {
-        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/reject`, {
+        const response = await fetch(`${API_BASE}/api/petugas/reservations/${currentReservationId}/reject`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -264,7 +265,7 @@ async function confirmEmergency() {
     }
 
     try {
-        const response = await fetch(`/api/petugas/reservations/${currentReservationId}/emergency-cancel`, {
+        const response = await fetch(`${API_BASE}/api/petugas/reservations/${currentReservationId}/emergency-cancel`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -346,7 +347,7 @@ async function processDamageFromModal() {
     if (!currentDamageId) return;
 
     try {
-        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+        const response = await fetch(`${API_BASE}/api/petugas/damage-reports/${currentDamageId}/status`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -385,7 +386,7 @@ async function confirmResolution() {
     }
 
     try {
-        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+        const response = await fetch(`${API_BASE}/api/petugas/damage-reports/${currentDamageId}/status`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -426,7 +427,7 @@ async function confirmDamageReject() {
     }
 
     try {
-        const response = await fetch(`/api/petugas/damage-reports/${currentDamageId}/status`, {
+        const response = await fetch(`${API_BASE}/api/petugas/damage-reports/${currentDamageId}/status`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -458,11 +459,11 @@ async function toggleMaintenance(rowId, facilityId) {
     const row = document.getElementById(rowId);
     if (!row) return;
 
-    const facId = facilityId || row.dataset.facilityId;
+    const facId = facilityId || row.dataset.facilityId || (rowId.startsWith('row-ops-') ? rowId.replace('row-ops-', '') : rowId.replace(/\D/g, ''));
     if (!facId) return;
 
     try {
-        const response = await fetch(`/api/petugas/facilities/${facId}/maintenance`, {
+        const response = await fetch(`${API_BASE}/api/petugas/facilities/${facId}/maintenance`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -478,8 +479,9 @@ async function toggleMaintenance(rowId, facilityId) {
 
         const badge = row.querySelector('.badge');
         const actionButton = row.querySelector('button');
+        const isMaint = ['maintenance', 'dalam perbaikan'].includes((data.facility.status || '').toLowerCase());
 
-        if (data.facility.status === 'maintenance') {
+        if (isMaint) {
             if (badge) {
                 badge.className = 'badge danger';
                 badge.innerText = 'Dalam Perbaikan';
@@ -511,7 +513,7 @@ async function toggleMaintenance(rowId, facilityId) {
 async function loadPetugasData() {
     try {
         // 1. Dashboard summary & stats (US 8)
-        const dashRes = await fetch("/api/petugas/dashboard", {
+        const dashRes = await fetch(`${API_BASE}/api/petugas/dashboard`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Accept": "application/json"
@@ -543,7 +545,7 @@ async function loadPetugasData() {
                 maintTable.innerHTML = "";
                 dashData.facilities.forEach((fac, idx) => {
                     const rowId = `row-ops-${fac.id}`;
-                    const isMaint = fac.status === "maintenance";
+                    const isMaint = ['maintenance', 'dalam perbaikan'].includes((fac.status || '').toLowerCase());
                     const badgeClass = isMaint ? "badge danger" : "badge success";
                     const badgeText = isMaint ? "Dalam Perbaikan" : "Aktif Normal";
                     const btnClass = isMaint ? "button button-primary button-small" : "button button-outline button-small";
@@ -564,7 +566,7 @@ async function loadPetugasData() {
         }
 
         // 2. Queue Reservations Table (US 8)
-        const queueRes = await fetch("/api/petugas/queue", {
+        const queueRes = await fetch(`${API_BASE}/api/petugas/queue`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Accept": "application/json"
@@ -586,7 +588,7 @@ async function loadPetugasData() {
                     const btnClass = res.status_class === 'pending' ? 'button button-primary button-small' : 'button button-outline button-small';
 
                     const tr = document.createElement("tr");
-                    tr.id = res.row_id;
+                    tr.id = rowId = res.row_id;
                     tr.innerHTML = `
                         <td>
                             <div class="font-bold">${res.name}</div>
@@ -610,7 +612,7 @@ async function loadPetugasData() {
         }
 
         // 3. Damage Reports Table (US 8)
-        const dmgRes = await fetch("/api/petugas/damage-reports", {
+        const dmgRes = await fetch(`${API_BASE}/api/petugas/damage-reports`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Accept": "application/json"
@@ -657,12 +659,11 @@ async function loadPetugasData() {
 }
 
 function matchBadge(status) {
-    return match (status) {
-        'pending', 'diproses', 'warning' => 'warning',
-        'approved', 'selesai', 'success' => 'success',
-        'rejected', 'ditolak', 'danger' => 'danger',
-        default => 'neutral',
-    };
+    const s = (status || '').toLowerCase();
+    if (['pending', 'diproses', 'warning', 'menunggu_persetujuan'].includes(s)) return 'warning';
+    if (['approved', 'selesai', 'success', 'disetujui'].includes(s)) return 'success';
+    if (['rejected', 'ditolak', 'danger', 'dibatalkan'].includes(s)) return 'danger';
+    return 'neutral';
 }
 
 loadPetugasData();

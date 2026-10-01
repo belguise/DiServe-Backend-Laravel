@@ -1,4 +1,5 @@
 const token = localStorage.getItem("auth_token");
+const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
 
 if (!token) {
     window.location.href = "login.html";
@@ -91,7 +92,7 @@ async function cancelReservation() {
     const reservationId = currentReservationId || selectedReservationButton.dataset.id;
 
     try {
-        const response = await fetch(`/api/reservations/${reservationId}/cancel`, {
+        const response = await fetch(`${API_BASE}/api/reservations/${reservationId}/cancel`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -160,7 +161,7 @@ function formatDateTime(dateTime) {
 async function loadReservations() {
     if (!tableBody) return;
     try {
-        const response = await fetch("/api/user/reservations", {
+        const response = await fetch(`${API_BASE}/api/user/reservations`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Accept": "application/json"

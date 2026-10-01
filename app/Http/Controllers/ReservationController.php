@@ -82,6 +82,10 @@ class ReservationController extends Controller
     {
         $user = $request->user();
 
+        if (!$request->has('facility') && $request->has('facility_id')) {
+            $request->merge(['facility' => $request->facility_id]);
+        }
+
         $request->validate([
             'facility' => 'required',
             'start_date' => 'required|date|after_or_equal:today',

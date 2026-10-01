@@ -1,5 +1,6 @@
 const token = localStorage.getItem("auth_token");
 const user = JSON.parse(localStorage.getItem("user") || "null");
+const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
 
 if (!token || !user || user.role !== "admin") {
     window.location.href = "login.html";
@@ -142,7 +143,7 @@ async function submitAddFacility() {
     }
 
     try {
-        const response = await fetch('/api/admin/facilities', {
+        const response = await fetch(`${API_BASE}/api/admin/facilities`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -212,7 +213,7 @@ async function submitEditFacility() {
     }
 
     try {
-        const response = await fetch(`/api/admin/facilities/${facId}`, {
+        const response = await fetch(`${API_BASE}/api/admin/facilities/${facId}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -250,7 +251,7 @@ async function toggleFacilityStatus(rowId, facilityName, facilityId = null) {
     if (!confirm(confirmMsg)) return;
 
     try {
-        const response = await fetch(`/api/admin/facilities/${facId}/toggle-status`, {
+        const response = await fetch(`${API_BASE}/api/admin/facilities/${facId}/toggle-status`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -331,7 +332,7 @@ async function submitAddUser() {
     }
 
     try {
-        const response = await fetch('/api/admin/users', {
+        const response = await fetch(`${API_BASE}/api/admin/users`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -372,7 +373,7 @@ async function verifyAccount(rowId, userName, userId = null) {
     const uId = userId || rowId.replace('acc-', '');
 
     try {
-        const response = await fetch(`/api/admin/users/${uId}/verify`, {
+        const response = await fetch(`${API_BASE}/api/admin/users/${uId}/verify`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -399,7 +400,7 @@ async function rejectAccount(rowId, userId = null) {
     if (reason === null || reason.trim() === '') return;
 
     try {
-        const response = await fetch(`/api/admin/users/${uId}/reject`, {
+        const response = await fetch(`${API_BASE}/api/admin/users/${uId}/reject`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -437,7 +438,7 @@ async function toggleAccountStatus(rowId, userName, userId = null) {
     if (!confirm(confirmMsg)) return;
 
     try {
-        const response = await fetch(`/api/admin/users/${uId}/toggle-status`, {
+        const response = await fetch(`${API_BASE}/api/admin/users/${uId}/toggle-status`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -461,7 +462,7 @@ async function toggleAccountStatus(rowId, userName, userId = null) {
 // Rekapitulasi & Export (US 17)
 function exportData(format) {
     alert(`Mempersiapkan data rekapitulasi fasilitas...\nBerkas laporan dengan format [.${format}] akan mulai diunduh.`);
-    window.location.href = `/api/admin/export/${format.toLowerCase()}`;
+    window.location.href = `${API_BASE}/api/admin/export/${format.toLowerCase()}`;
 }
 
 // Table Filter
@@ -531,7 +532,7 @@ function filterTable(inputId, tableId) {
 async function loadAdminData() {
     try {
         // 1. Facilities Table
-        const facRes = await fetch('/api/facilities');
+        const facRes = await fetch(`${API_BASE}/api/facilities`);
         if (facRes.ok) {
             const facJson = await facRes.json();
             const facilities = facJson.data || [];
@@ -569,7 +570,7 @@ async function loadAdminData() {
         }
 
         // 2. Accounts Table
-        const userRes = await fetch('/api/admin/users', {
+        const userRes = await fetch(`${API_BASE}/api/admin/users`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -626,7 +627,7 @@ async function loadAdminData() {
         }
 
         // 3. Rekapitulasi Table & Stats
-        const rekapRes = await fetch('/api/admin/rekap', {
+        const rekapRes = await fetch(`${API_BASE}/api/admin/rekap`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'

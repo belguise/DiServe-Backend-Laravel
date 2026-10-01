@@ -1,7 +1,7 @@
 const registerForm = document.querySelector("#register-form");
 
 const nameInput = document.querySelector("#name");
-const identityInput = document.querySelector("#identity_number");
+const identityInput = document.querySelector("#identity-number") || document.querySelector("#identity_number");
 const emailInput = document.querySelector("#email");
 const passwordInput = document.querySelector("#password");
 const confirmationInput = document.querySelector("#password-confirmation") || document.querySelector("#password_confirmation");
@@ -48,13 +48,15 @@ function togglePasswordVisibility(input, icon, button) {
 }
 
 if (togglePassword) {
-  togglePassword.addEventListener("click", function () {
+  togglePassword.addEventListener("click", function (e) {
+    e.preventDefault();
     togglePasswordVisibility(passwordInput, passwordIcon, togglePassword);
   });
 }
 
 if (toggleConfirmation) {
-  toggleConfirmation.addEventListener("click", function () {
+  toggleConfirmation.addEventListener("click", function (e) {
+    e.preventDefault();
     togglePasswordVisibility(
       confirmationInput,
       confirmationIcon,
@@ -82,7 +84,7 @@ passwordInput.addEventListener("input", function () {
   updatePasswordRequirements();
 });
 
-registerForm.addEventListener("submit", function (event) {
+registerForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
   nameError.textContent = "";
@@ -189,8 +191,10 @@ registerForm.addEventListener("submit", function (event) {
     submitButton.textContent = "Memproses...";
   }
 
+  const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
+
   try {
-    const response = await fetch("/api/auth/register", {
+    const response = await fetch(`${API_BASE}/api/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

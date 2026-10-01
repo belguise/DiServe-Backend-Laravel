@@ -73,8 +73,9 @@ function filterFacilities() {
 
 async function loadFacilitiesFromApi() {
   if (!grid) return;
+  const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
   try {
-    const res = await fetch("/api/facilities");
+    const res = await fetch(`${API_BASE}/api/facilities`);
     if (!res.ok) return;
     const json = await res.json();
     const facilities = json.data;
@@ -88,8 +89,9 @@ async function loadFacilitiesFromApi() {
         card.dataset.location = fac.location;
         card.dataset.capacity = fac.capacity;
 
-        const isMaint = fac.status === "maintenance";
-        const isInactive = fac.status === "inactive";
+        const stLower = (fac.status || "").toLowerCase();
+        const isMaint = stLower === "maintenance" || stLower === "dalam perbaikan";
+        const isInactive = stLower === "inactive" || stLower === "nonaktif";
         let statusBadgeClass = "available";
         let statusBadgeText = "Tersedia";
 

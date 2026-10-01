@@ -47,23 +47,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/petugas/reservations/{id}/emergency-cancel', [ReservationController::class, 'emergencyCancel']);
 
         Route::get('/petugas/damage-reports', [DamageReportController::class, 'index']);
-        Route::post('/petugas/damage-reports/{id}/status', [DamageReportController::class, 'updateStatus']);
+        Route::match(['post', 'patch'], '/petugas/damage-reports/{id}/status', [DamageReportController::class, 'updateStatus']);
 
-        Route::post('/petugas/facilities/{id}/maintenance', [FacilityController::class, 'toggleStatus']);
+        Route::match(['post', 'patch'], '/petugas/facilities/{id}/maintenance', [FacilityController::class, 'toggleStatus']);
     });
 
     // --- 5. Admin System Administration Routes (US 13, US 14, US 15, US 16, US 17) ---
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/users', [AdminController::class, 'users']);
         Route::post('/admin/users', [AdminController::class, 'createUser']);
-        Route::post('/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
-        Route::post('/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);
-        Route::post('/admin/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus']);
+        Route::match(['post', 'patch'], '/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
+        Route::match(['post', 'patch'], '/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);
+        Route::match(['post', 'patch'], '/admin/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus']);
 
         Route::post('/admin/facilities', [FacilityController::class, 'store']);
-        Route::post('/admin/facilities/{id}', [FacilityController::class, 'update']);
-        Route::put('/admin/facilities/{id}', [FacilityController::class, 'update']);
-        Route::post('/admin/facilities/{id}/toggle-status', [FacilityController::class, 'toggleStatus']);
+        Route::match(['post', 'put'], '/admin/facilities/{id}', [FacilityController::class, 'update']);
+        Route::match(['post', 'patch'], '/admin/facilities/{id}/toggle-status', [FacilityController::class, 'toggleStatus']);
         Route::delete('/admin/facilities/{id}', [FacilityController::class, 'destroy']);
 
         Route::get('/admin/rekap', [AdminController::class, 'rekap']);
