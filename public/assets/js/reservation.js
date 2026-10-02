@@ -26,11 +26,13 @@ const successTime = document.querySelector("#success-reservation-time");
 const successPurpose = document.querySelector("#success-reservation-purpose");
 const successFile = document.querySelector("#success-reservation-file");
 
-const today = new Date().toISOString().split("T")[0];
+const tomorrowDate = new Date();
+tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+const tomorrow = tomorrowDate.toISOString().split("T")[0];
 
 if (startDateInput && endDateInput) {
-    startDateInput.min = today;
-    endDateInput.min = today;
+    startDateInput.min = tomorrow;
+    endDateInput.min = tomorrow;
 
     startDateInput.addEventListener("change", function () {
         endDateInput.min = startDateInput.value;
@@ -81,6 +83,15 @@ reservationForm.addEventListener("submit", async function (event) {
     const purpose = purposeInput.value.trim();
     const supportingFile = supportingFileInput ? supportingFileInput.files[0] : null;
 
+    if (startDate < tomorrow || endDate < tomorrow) {
+        alert("Tanggal reservasi minimal adalah besok.");
+        return;
+    }
+    const toMinutes = value => Number(value.split(":")[0]) * 60 + Number(value.split(":")[1]);
+    if (toMinutes(startTime) < 420 || toMinutes(startTime) >= 1200 || toMinutes(endTime) < 420 || toMinutes(endTime) > 1200) {
+        alert("Reservasi hanya dapat dilakukan pada pukul 07:00 sampai 20:00.");
+        return;
+    }
     if (endDate < startDate) {
         alert("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
         return;

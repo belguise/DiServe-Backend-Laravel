@@ -27,7 +27,14 @@ class RegisterRequest extends FormRequest
                         '@students.undip.ac.id',
                         '@lectures.undip.ac.id',
                         '@staff.undip.ac.id',
+                        '@officer.undip.ac.id',
+                        '@facility.undip.ac.id',
+                        '@facillity.undip.ac.id',
                     ];
+                    if (str_ends_with(strtolower($value), '@admin.undip.ac.id')) {
+                        $fail('Admin tidak dapat melakukan pendaftaran akun melalui halaman ini.');
+                        return;
+                    }
                     $matches = false;
                     foreach ($allowedDomains as $domain) {
                         if (str_ends_with(strtolower($value), $domain)) {

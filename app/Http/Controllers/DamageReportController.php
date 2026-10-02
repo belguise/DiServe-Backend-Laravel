@@ -73,7 +73,18 @@ class DamageReportController extends Controller
 
         $request->validate([
             'facility' => 'required',
-            'category' => 'required|string',
+            'category' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    $valid = collect(DamageReport::CATEGORIES)
+                        ->contains(fn ($category) => strcasecmp($category, (string) $value) === 0);
+
+                    if (!$valid) {
+                        $fail('Kategori masalah yang dipilih tidak valid.');
+                    }
+                },
+            ],
             'location_detail' => 'required|string|max:255',
             'description' => 'required|string|min:10|max:2000',
             'photo' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
@@ -87,11 +98,12 @@ class DamageReportController extends Controller
             'photo.max' => 'Ukuran foto maksimal 5 MB.',
         ]);
 
-        $facilityInput = $request->facility;
-        $facility = Facility::where('id', $facilityInput)
-            ->orWhere('slug', $facilityInput)
-            ->orWhere('name', $facilityInput)
-            ->first();
+        $facilityInput = (string) $request->facility;
+        $facility = is_numeric($facilityInput)
+            ? Facility::find($facilityInput)
+            : Facility::where('slug', $facilityInput)
+                ->orWhereRaw('LOWER(name) = ?', [strtolower($facilityInput)])
+                ->first();
 
         if (!$facility) {
             return response()->json([
@@ -104,16 +116,8 @@ class DamageReportController extends Controller
             $photoPath = $request->file('photo')->store('reports', 'public');
         }
 
-        $categoryNames = [
-            'fasilitas-rusak' => 'Fasilitas rusak',
-            'peralatan-rusak' => 'Peralatan rusak',
-            'kebersihan' => 'Kebersihan',
-            'kelistrikan' => 'Kelistrikan',
-            'jaringan' => 'Jaringan/Internet',
-            'keamanan' => 'Keamanan',
-            'lainnya' => 'Lainnya',
-        ];
-        $category = $categoryNames[$request->category] ?? $request->category;
+        $category = collect(DamageReport::CATEGORIES)
+            ->first(fn ($item) => strcasecmp($item, (string) $request->category) === 0);
 
         $report = DamageReport::create([
             'user_id' => $user->id,

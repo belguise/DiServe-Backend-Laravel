@@ -559,7 +559,7 @@ async function loadAdminData() {
                         <td><span class="${badgeClass}">${badgeText}</span></td>
                         <td class="text-center">
                             <div class="action-buttons">
-                                <button class="button button-outline button-fixed" onclick="openEditModal('${rowId}', '${fac.name.replace(/'/g, "\\'")}', '${fac.type}', '${fac.location}', ${fac.capacity}, '${(fac.address || '').replace(/'/g, "\\'")}', '${fac.image_name || ''}', ${fac.id})">Edit</button>
+                                <button type="button" class="button button-outline button-fixed" onclick="openEditModal('${rowId}', '${fac.name.replace(/'/g, "\\'")}', '${fac.type}', '${fac.location}', ${fac.capacity}, '${(fac.address || '').replace(/'/g, "\\'")}', '${fac.image_name || ''}', ${fac.id})">Edit</button>
                                 <button class="${toggleBtnClass}" onclick="toggleFacilityStatus('${rowId}', '${fac.name.replace(/'/g, "\\'")}', ${fac.id})">${toggleBtnText}</button>
                             </div>
                         </td>
@@ -598,14 +598,14 @@ async function loadAdminData() {
                     if (isPending) {
                         actionHtml = `
                             <div class="action-buttons">
-                                <button class="button button-primary button-fixed" onclick="verifyAccount('${rowId}', '${u.name.replace(/'/g, "\\'")}', ${u.id})">Setujui</button>
-                                <button class="button button-outline button-fixed" onclick="rejectAccount('${rowId}', ${u.id})">Tolak</button>
+                                <button type="button" class="button button-primary button-fixed" onclick="verifyAccount('${rowId}', '${u.name.replace(/'/g, "\\'")}', ${u.id})">Setujui</button>
+                                <button type="button" class="button button-outline button-fixed" onclick="rejectAccount('${rowId}', ${u.id})">Tolak</button>
                             </div>
                         `;
                     } else if (isActive) {
                         actionHtml = `<button class="button button-danger button-fixed" onclick="toggleAccountStatus('${rowId}', '${u.name.replace(/'/g, "\\'")}', ${u.id})">Cabut Akses</button>`;
                     } else {
-                        actionHtml = `<button class="button button-primary button-fixed" onclick="toggleAccountStatus('${rowId}', '${u.name.replace(/'/g, "\\'")}', ${u.id})">Aktifkan Akses</button>`;
+                        actionHtml = `<button type="button" class="button button-primary button-fixed" onclick="toggleAccountStatus('${rowId}', '${u.name.replace(/'/g, "\\'")}', ${u.id})">Aktifkan Akses</button>`;
                     }
 
                     const tr = document.createElement('tr');
@@ -671,3 +671,4 @@ async function loadAdminData() {
 }
 
 loadAdminData();
+window.verifyAccount=verifyAccount; window.rejectAccount=rejectAccount; window.toggleAccountStatus=toggleAccountStatus; window.toggleFacilityStatus=toggleFacilityStatus; window.openEditModal=openEditModal;

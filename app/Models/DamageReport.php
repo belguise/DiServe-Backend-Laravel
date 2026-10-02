@@ -9,6 +9,8 @@ class DamageReport extends Model
 {
     use HasFactory;
 
+    public const CATEGORIES = ['Kelistrikan', 'Infrastruktur Bangunan', 'Inventaris Ruangan'];
+
     protected $table = 'reports';
 
     protected $fillable = [

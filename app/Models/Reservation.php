@@ -102,13 +102,41 @@ class Reservation extends Model
         return in_array(strtolower($this->status ?? ''), ['cancelled', 'dibatalkan']);
     }
 
+    public static function expirePassedPendingReservations(): int
+    {
+        $now = now();
+
+        return static::whereIn('status', ['pending', 'menunggu'])
+            ->where(function ($query) use ($now) {
+                $query->where(function ($q) use ($now) {
+                    $q->whereNotNull('start_at')->where('start_at', '<=', $now);
+                })->orWhere(function ($q) use ($now) {
+                    $q->whereNull('start_at')
+                        ->whereNotNull('start_date')
+                        ->whereNotNull('start_time')
+                        ->where(function ($dateQuery) use ($now) {
+                            $dateQuery->whereDate('start_date', '<', $now->toDateString())
+                                ->orWhere(function ($sameDayQuery) use ($now) {
+                                    $sameDayQuery->whereDate('start_date', $now->toDateString())
+                                        ->whereTime('start_time', '<=', $now->format('H:i:s'));
+                                });
+                        });
+                });
+            })
+            ->update([
+                'status' => 'rejected',
+                'rejection_reason' => 'Reservasi otomatis ditolak karena belum disetujui hingga waktu mulai terlewati.',
+            ]);
+    }
+
     public function isCancellable(): bool
     {
         if (!in_array(strtolower($this->status ?? ''), ['pending', 'menunggu', 'approved', 'disetujui'])) {
             return false;
         }
 
-        if ($this->cancellation_deadline && now()->isAfter($this->cancellation_deadline)) {
+        $deadline = $this->cancellation_deadline ?: ($this->start_at ? $this->start_at->copy()->subDay() : null);
+        if ($deadline && now()->isAfter($deadline)) {
             return false;
         }
 

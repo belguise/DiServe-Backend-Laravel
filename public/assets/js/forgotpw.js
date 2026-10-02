@@ -1,43 +1,23 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const forgotForm = document.getElementById('forgot-form');
-    const successNotification = document.getElementById('success-notification');
-    const forgotSubtitle = document.getElementById('forgot-subtitle');
-    const emailGroup = document.getElementById('email-group');
-    const submitBtn = document.getElementById('submit-forgot');
-    const forgotError = document.getElementById('forgot-error');
-
-    if (!forgotForm){
-        return;
-    }
-
-    forgotForm.addEventListener('submit', function (e) {
+    const form = document.getElementById('forgot-form');
+    const success = document.getElementById('success-notification');
+    const subtitle = document.getElementById('forgot-subtitle');
+    const group = document.getElementById('email-group');
+    const btn = document.getElementById('submit-forgot');
+    const error = document.getElementById('forgot-error');
+    const API_BASE = (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '8000')) ? 'http://127.0.0.1:8000' : '';
+    if (!form) return;
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
-        const emailInput = document.getElementById('recovery-email').value.trim();
-        
-        forgotError.textContent = "";
-
-        if (emailInput === '') {
-            forgotError.textContent = "Email wajib diisi.";
-            return;
-        }
-
-        const isValidDomain = emailInput.endsWith('@students.undip.ac.id') || 
-                              emailInput.endsWith('@lectures.undip.ac.id') || 
-                              emailInput.endsWith('@staff.undip.ac.id') ||
-                              emailInput.endsWith('@officer.undip.ac.id') ||
-                              emailInput.endsWith('@facility.undip.ac.id') ||
-                              emailInput.endsWith('@admin.undip.ac.id');
-
-        if (!isValidDomain) {
-            forgotError.textContent = "Gunakan email resmi UNDIP yang valid.";
-            return;
-        }
-
-        emailGroup.classList.add('hidden');
-        submitBtn.classList.add('hidden');
-        forgotForm.querySelector('.register-link').classList.add('hidden');
-        forgotSubtitle.style.display = 'none';
-        
-        successNotification.classList.remove('hidden');
+        const email = document.getElementById('recovery-email').value.trim().toLowerCase();
+        error.textContent = '';
+        if (!email) { error.textContent = 'Email wajib diisi.'; return; }
+        try {
+            btn.disabled = true;
+            const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({email})});
+            const data = await response.json();
+            if (!response.ok) { error.textContent = data.message || 'Permintaan reset password gagal.'; return; }
+            group.classList.add('hidden'); btn.classList.add('hidden'); subtitle.style.display='none'; form.querySelector('.register-link')?.classList.add('hidden'); success.classList.remove('hidden');
+        } catch (err) { console.error(err); error.textContent='Tidak dapat terhubung ke server. Silakan coba lagi.'; } finally { btn.disabled=false; }
     });
 });
