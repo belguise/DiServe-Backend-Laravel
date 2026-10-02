@@ -8,7 +8,15 @@ const availabilityFacilityName = document.querySelector(
 const timeListContainer = document.querySelector(".availability-time-list");
 let currentFacilityForAvailability = "";
 
+function localDateString(date = new Date()) {
+  const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+const today = localDateString();
+if (availabilityDate) { availabilityDate.min=today; if (!availabilityDate.value) availabilityDate.value=today; }
+
 async function fetchAvailability(facilityName, date) {
+  if (date && date < today) { date=today; if (availabilityDate) availabilityDate.value=today; }
   if (!timeListContainer) return;
   const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
   try {

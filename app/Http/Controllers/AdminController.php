@@ -7,6 +7,7 @@ use App\Models\Facility;
 use App\Models\Reservation;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -145,6 +146,7 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
         $user->update(['status' => 'aktif']);
+        Mail::to($user->email)->send(new \App\Mail\AccountApprovedMail($user));
 
         return response()->json([
             'message' => "Akun pengguna {$user->name} berhasil diverifikasi dan aktif.",

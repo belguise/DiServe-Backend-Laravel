@@ -154,6 +154,8 @@ function openReservationDetail(rowId, status, reasonText = "") {
     document.getElementById('detail-times').textContent = data.times;
     document.getElementById('detail-purpose').textContent = data.purpose;
     document.getElementById('detail-filename').textContent = data.filename;
+    const fileLink = document.getElementById('detail-file-link');
+    if (fileLink) { fileLink.href = data.file_url || "#"; fileLink.classList.toggle('hidden', !data.file_url); }
 
     const reasonBox = document.getElementById('detail-reason-box');
     const reasonMsg = document.getElementById('detail-reason-text');
@@ -201,7 +203,7 @@ async function approveFromModal() {
 
         alert("Pengajuan reservasi berhasil disetujui!");
         closeModal('modal-reservation-detail');
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Approve error:", e);
         alert("Terjadi kesalahan saat menyetujui reservasi.");
@@ -244,7 +246,7 @@ async function confirmReject() {
         alert(`Pengajuan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
         closeModal('modal-reject');
         resetFormInputs();
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Reject error:", e);
         alert("Terjadi kesalahan saat menolak reservasi.");
@@ -287,7 +289,7 @@ async function confirmEmergency() {
         alert(`Pembatalan darurat berhasil dikirim.\nAlasan: ${reasonInput.value}`);
         closeModal('modal-emergency');
         resetFormInputs();
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Emergency cancel error:", e);
         alert("Terjadi kesalahan saat pembatalan darurat.");
@@ -366,7 +368,7 @@ async function processDamageFromModal() {
 
         alert("Status laporan diubah menjadi SEDANG DIPROSES. Tim teknisi telah dikerahkan.");
         closeModal('modal-damage-detail');
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Process damage error:", e);
     }
@@ -407,7 +409,7 @@ async function confirmResolution() {
         alert('Laporan Kerusakan berhasil ditutup dengan status SELESAI.');
         closeModal('modal-resolution');
         resetFormInputs();
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Resolve error:", e);
     }
@@ -448,7 +450,7 @@ async function confirmDamageReject() {
         alert(`Laporan berhasil ditolak.\nAlasan: ${reasonInput.value}`);
         closeModal('modal-damage-reject');
         resetFormInputs();
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Reject damage error:", e);
     }
@@ -503,7 +505,7 @@ async function toggleMaintenance(rowId, facilityId) {
             alert('Fasilitas telah DIAKTIFKAN KEMBALI.\nPeminjaman publik dapat diajukan kembali.');
         }
 
-        loadPetugasData();
+        await loadPetugasData();
     } catch (e) {
         console.error("Toggle maintenance error:", e);
     }
@@ -565,13 +567,15 @@ async function loadPetugasData() {
             }
         }
 
-        // 2. Queue Reservations Table (US 8)
-        const queueRes = await fetch(`${API_BASE}/api/petugas/queue`, {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/json"
-            }
-        });
+        // 2. Queue Reservations + Damage Reports (US 8)
+        const requestHeaders = {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/json"
+        };
+        const [queueRes, dmgRes] = await Promise.all([
+            fetch(`${API_BASE}/api/petugas/queue`, { headers: requestHeaders }),
+            fetch(`${API_BASE}/api/petugas/damage-reports`, { headers: requestHeaders })
+        ]);
 
         if (queueRes.ok) {
             const queueData = await queueRes.json();
@@ -588,7 +592,7 @@ async function loadPetugasData() {
                     const btnClass = res.status_class === 'pending' ? 'button button-primary button-small' : 'button button-outline button-small';
 
                     const tr = document.createElement("tr");
-                    tr.id = rowId = res.row_id;
+                    tr.id = res.row_id;
                     tr.innerHTML = `
                         <td>
                             <div class="font-bold">${res.name}</div>
@@ -612,13 +616,6 @@ async function loadPetugasData() {
         }
 
         // 3. Damage Reports Table (US 8)
-        const dmgRes = await fetch(`${API_BASE}/api/petugas/damage-reports`, {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/json"
-            }
-        });
-
         if (dmgRes.ok) {
             const dmgData = await dmgRes.json();
             const reports = dmgData.data || [];

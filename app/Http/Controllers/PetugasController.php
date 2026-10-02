@@ -15,6 +15,7 @@ class PetugasController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
+        Reservation::expirePassedPendingReservations();
         $pendingReservations = Reservation::whereIn('status', ['pending', 'menunggu', 'Menunggu'])->count();
         $newReports = DamageReport::whereIn('status', ['baru', 'new', 'Baru'])->count();
         $processingReports = DamageReport::whereIn('status', ['diproses', 'processing', 'Diproses'])->count();

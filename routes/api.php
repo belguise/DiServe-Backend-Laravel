@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Route;
 // --- 1. Public Authentication & Visitors Routes ---
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public facility catalog & availability (Visitors - US 1, US 2)
 Route::get('/facilities', [FacilityController::class, 'index']);

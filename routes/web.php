@@ -17,6 +17,7 @@ $pages = [
     'report',
     'petugas',
     'admin',
+    'reset-password',
 ];
 
 foreach ($pages as $page) {

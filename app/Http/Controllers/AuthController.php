@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -69,7 +73,7 @@ class AuthController extends Controller
             'identity_number' => $request->identity_number,
             'email' => strtolower($request->email),
             'password' => Hash::make($request->password),
-            'role' => 'pengguna',
+            'role' => preg_match('/@(facility|facillity|officer)\.undip\.ac\.id$/i', strtolower($request->email)) ? 'petugas' : 'pengguna',
             'status' => 'pending',
         ]);
 
@@ -79,10 +83,53 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => 'user',
+                'role' => $user->role === 'petugas' ? 'petugas' : 'user',
                 'status' => $user->status,
             ],
         ], 201);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+        $email = strtolower($request->email);
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            $token = Str::random(64);
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $email],
+                ['token' => Hash::make($token), 'created_at' => now()]
+            );
+            Mail::to($user->email)->send(new \App\Mail\ResetPasswordMail($user, $token));
+        }
+
+        return response()->json(['message' => 'Jika email terdaftar, tautan pengaturan ulang password telah dikirim ke email Anda.']);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $email = strtolower($request->email);
+        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+        if (!$record || !$record->created_at || Carbon::parse($record->created_at)->addMinutes(60)->isPast() || !Hash::check($request->token, $record->token)) {
+            return response()->json(['message' => 'Tautan reset password tidak valid atau sudah kedaluwarsa.'], 422);
+        }
+
+        $user = User::where('email', $email)->first();
+        if (!$user) return response()->json(['message' => 'Akun tidak ditemukan.'], 404);
+
+        $user->password = $request->password;
+        $user->save();
+        $user->tokens()->delete();
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        return response()->json(['message' => 'Password berhasil diubah. Silakan masuk dengan password baru.']);
     }
 
     public function me(Request $request): JsonResponse

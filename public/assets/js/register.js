@@ -31,7 +31,9 @@ const allowedDomains = [
   "@students.undip.ac.id",
   "@lectures.undip.ac.id",
   "@staff.undip.ac.id",
-  "@admin.undip.ac.id",
+  "@officer.undip.ac.id",
+  "@facility.undip.ac.id",
+  "@facillity.undip.ac.id",
 ];
 
 function togglePasswordVisibility(input, icon, button) {
@@ -122,7 +124,13 @@ registerForm.addEventListener("submit", async function (event) {
     return;
   }
 
-  const isAllowedDomain = allowedDomains.some(function (domain) {
+    if (email.endsWith("@admin.undip.ac.id")) {
+        emailError.textContent = "Admin tidak dapat melakukan pendaftaran akun.";
+        emailInput.focus();
+        return;
+    }
+
+    const isAllowedDomain = allowedDomains.some(function (domain) {
     return email.endsWith(domain);
   });
 
@@ -223,8 +231,16 @@ registerForm.addEventListener("submit", async function (event) {
       return;
     }
 
-    alert(data.message || "Pendaftaran akun berhasil. Silakan tunggu verifikasi administrator sebelum login.");
-    window.location.href = "login.html";
+    const notice = document.querySelector("#register-notice");
+    const noticeText = document.querySelector("#register-notice-text");
+    if (notice && noticeText) {
+        noticeText.textContent = data.message || "Pendaftaran akun berhasil. Akun Anda menunggu persetujuan administrator.";
+        notice.classList.remove("hidden");
+    } else {
+        alert(data.message || "Pendaftaran akun berhasil. Akun menunggu persetujuan administrator.");
+    }
+    registerForm.reset();
+    updatePasswordRequirements();
   } catch (err) {
     console.error("Register error:", err);
     alert("Tidak dapat terhubung ke server. Silakan coba lagi.");

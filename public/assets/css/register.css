@@ -271,3 +271,6 @@
     grid-template-columns: 1fr;
   }
 }
+
+.register-notice { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; background: var(--background-soft, #f8fafc); }
+.hidden { display: none !important; }

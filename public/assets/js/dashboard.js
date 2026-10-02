@@ -2,8 +2,8 @@ const token = localStorage.getItem("auth_token");
 const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 const API_BASE = (window.location.protocol === "file:" || (window.location.port && window.location.port !== "8000")) ? "http://127.0.0.1:8000" : "";
 
-if (!token) {
-    window.location.href = "login.html";
+if (!token || !storedUser || !["user", "pengguna"].includes(storedUser.role)) {
+    window.location.replace("login.html");
 }
 
 const logoutButton = document.querySelector("#logout-button");

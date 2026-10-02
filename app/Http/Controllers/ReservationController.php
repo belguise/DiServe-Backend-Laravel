@@ -18,6 +18,7 @@ class ReservationController extends Controller
      */
     public function myReservations(Request $request): JsonResponse
     {
+        Reservation::expirePassedPendingReservations();
         $user = $request->user();
 
         $reservations = Reservation::with('facility')
@@ -64,7 +65,7 @@ class ReservationController extends Controller
                 'file' => $res->supporting_file ? basename($res->supporting_file) : 'Tidak ada berkas',
                 'file_url' => $res->supporting_file ? Storage::url($res->supporting_file) : null,
                 'submitted' => $res->created_at ? $res->created_at->translatedFormat('d F Y, H:i') : '-',
-                'cancellation_deadline' => $res->cancellation_deadline ? $res->cancellation_deadline->toISOString() : null,
+                'cancellation_deadline' => ($res->cancellation_deadline ?: ($res->start_at ? $res->start_at->copy()->subDay() : null))?->toISOString(),
                 'rejection_reason' => $res->rejection_reason,
                 'cancellation_reason' => $res->cancellation_reason,
             ];
@@ -88,20 +89,22 @@ class ReservationController extends Controller
 
         $request->validate([
             'facility' => 'required',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date|after:today',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'start_time' => 'required|string',
-            'end_time' => 'required|string',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i',
             'purpose' => 'required|string|min:5|max:1000',
             'supporting_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ], [
             'facility.required' => 'Fasilitas wajib dipilih.',
             'start_date.required' => 'Tanggal mulai wajib diisi.',
-            'start_date.after_or_equal' => 'Tanggal mulai tidak boleh lewat dari hari ini.',
+            'start_date.after' => 'Tanggal mulai minimal adalah besok.',
             'end_date.required' => 'Tanggal selesai wajib diisi.',
             'end_date.after_or_equal' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.',
             'start_time.required' => 'Jam mulai wajib dipilih.',
+            'start_time.date_format' => 'Format jam mulai tidak valid.',
             'end_time.required' => 'Jam selesai wajib dipilih.',
+            'end_time.date_format' => 'Format jam selesai tidak valid.',
             'purpose.required' => 'Keperluan penggunaan fasilitas wajib diisi.',
             'purpose.min' => 'Keperluan harus diisi dengan jelas (minimal 5 karakter).',
             'supporting_file.mimes' => 'Format berkas pendukung harus PDF, Word, atau Gambar (JPG, PNG).',
@@ -109,11 +112,12 @@ class ReservationController extends Controller
         ]);
 
         // Find facility by ID, slug, or name
-        $facilityInput = $request->facility;
-        $facility = Facility::where('id', $facilityInput)
-            ->orWhere('slug', $facilityInput)
-            ->orWhere('name', $facilityInput)
-            ->first();
+        $facilityInput = (string) $request->facility;
+        $facility = is_numeric($facilityInput)
+            ? Facility::find($facilityInput)
+            : Facility::where('slug', $facilityInput)
+                ->orWhereRaw('LOWER(name) = ?', [strtolower($facilityInput)])
+                ->first();
 
         if (!$facility) {
             return response()->json([
@@ -139,6 +143,12 @@ class ReservationController extends Controller
         $endAtStr = "{$request->end_date} {$request->end_time}:00";
         $startAt = Carbon::parse($startAtStr);
         $endAt = Carbon::parse($endAtStr);
+
+        $startMinutes = ((int) substr($request->start_time, 0, 2) * 60) + (int) substr($request->start_time, 3, 2);
+        $endMinutes = ((int) substr($request->end_time, 0, 2) * 60) + (int) substr($request->end_time, 3, 2);
+        if ($startMinutes < 420 || $startMinutes >= 1200 || $endMinutes < 420 || $endMinutes > 1200) {
+            return response()->json(['message' => 'Reservasi hanya dapat dilakukan pada pukul 07:00 sampai 20:00.', 'errors' => ['start_time' => ['Waktu reservasi harus antara 07:00 dan 20:00.']]], 422);
+        }
 
         // Validation: start_at < end_at
         if ($endAt->lessThanOrEqualTo($startAt)) {
@@ -236,7 +246,8 @@ class ReservationController extends Controller
         }
 
         // Check cancellation deadline for users
-        if ($user->role === 'pengguna' && $reservation->cancellation_deadline && now()->isAfter($reservation->cancellation_deadline)) {
+        $cancellationDeadline = $reservation->cancellation_deadline ?: ($reservation->start_at ? $reservation->start_at->copy()->subDay() : null);
+        if ($user->role === 'pengguna' && $cancellationDeadline && now()->isAfter($cancellationDeadline)) {
             return response()->json([
                 'message' => 'Batas waktu pembatalan telah terlewat.',
             ], 422);
@@ -259,6 +270,7 @@ class ReservationController extends Controller
      */
     public function queue(Request $request): JsonResponse
     {
+        Reservation::expirePassedPendingReservations();
         $query = Reservation::with(['facility', 'user'])->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {

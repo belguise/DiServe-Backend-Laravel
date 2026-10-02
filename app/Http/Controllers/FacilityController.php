@@ -185,11 +185,15 @@ class FacilityController extends Controller
         }
 
         $date = $request->query('date', now()->format('Y-m-d'));
+        if (!Carbon::hasFormat($date, 'Y-m-d') || Carbon::parse($date)->isBefore(now()->startOfDay())) {
+            return response()->json(['message' => 'Tanggal ketersediaan tidak boleh sebelum hari ini.'], 422);
+        }
+        Reservation::expirePassedPendingReservations();
 
-        // Generate standard time slots from 07:00 to 23:30 (30-min intervals)
+        // Generate standard time slots from 07:00 to 20:00 (30-min intervals)
         $slots = [];
         $startHour = 7;
-        $endHour = 23;
+        $endHour = 19;
 
         for ($h = $startHour; $h <= $endHour; $h++) {
             $hStr = str_pad($h, 2, '0', STR_PAD_LEFT);
